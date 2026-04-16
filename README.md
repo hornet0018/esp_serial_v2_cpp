@@ -53,10 +53,12 @@ ros2 launch esp_serial_v2_cpp esp_serial_launch.py serial_port:=/dev/ttyUSB0 bau
 - `/cmd_vel` (`geometry_msgs/Twist`) - Velocity commands
 
 ### Published
-- `/encoder/l` (`std_msgs/Int16`) - Left encoder count
-- `/encoder/r` (`std_msgs/Int16`) - Right encoder count
-- `/imu/...` - IMU data
-- `/battery/voltage` (`std_msgs/Float32`) - Battery voltage
+- `/esp/speed_l` (`std_msgs/Int16`) - Left motor speed
+- `/esp/speed_r` (`std_msgs/Int16`) - Right motor speed
+- `/esp/position_l` (`std_msgs/Int16`) - Left encoder position
+- `/esp/position_r` (`std_msgs/Int16`) - Right encoder position
+- `/esp/battery_voltage` (`std_msgs/Float32`) - Battery voltage
+- `/esp/timestamp` (`std_msgs/UInt32`) - ESP32 timestamp
 - `/diagnostics` (`diagnostic_msgs/DiagnosticArray`) - Diagnostics
 
 ## License
