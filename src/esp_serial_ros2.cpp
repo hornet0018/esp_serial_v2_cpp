@@ -12,6 +12,7 @@
 
 #include "std_msgs/msg/int16.hpp"
 #include "std_msgs/msg/float32.hpp"
+#include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/u_int32.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "std_srvs/srv/trigger.hpp"
@@ -53,6 +54,13 @@ public:
     invert_motor_r_ = this->get_parameter("invert_motor_r").as_bool();
 
     last_cmd_vel_time_ = this->now();
+
+    prev_pos_l_raw_ = 0;
+    prev_pos_r_raw_ = 0;
+    accumulated_pos_l_rad_ = 0.0;
+    accumulated_pos_r_rad_ = 0.0;
+    first_pos_l_ = true;
+    first_pos_r_ = true;
 
     try {
       ser_.setPort(port);
@@ -111,6 +119,8 @@ public:
     pub_pos_l_ = this->create_publisher<std_msgs::msg::Int16>("esp/position_l", 10);
     pub_voltage_ = this->create_publisher<std_msgs::msg::Float32>("esp/battery_voltage", 10);
     pub_timestamp_ = this->create_publisher<std_msgs::msg::UInt32>("esp/timestamp", 10);
+    pub_pos_l_rad_ = this->create_publisher<std_msgs::msg::Float64>("esp/position_l_rad", 10);
+    pub_pos_r_rad_ = this->create_publisher<std_msgs::msg::Float64>("esp/position_r_rad", 10);
 
     // Subscriber
     sub_cmd_vel_ = this->create_subscription<geometry_msgs::msg::Twist>(
@@ -304,12 +314,20 @@ private:
             msg.data = j["position_r"].get<int16_t>();
             pos_r = msg.data;
             pub_pos_r_->publish(msg);
+
+            auto msg_rad = std_msgs::msg::Float64();
+            msg_rad.data = unwrap_encoder(pos_r, prev_pos_r_raw_, accumulated_pos_r_rad_, first_pos_r_);
+            pub_pos_r_rad_->publish(msg_rad);
           }
           if (j.contains("position_l")) {
             auto msg = std_msgs::msg::Int16();
             msg.data = j["position_l"].get<int16_t>();
             pos_l = msg.data;
             pub_pos_l_->publish(msg);
+
+            auto msg_rad = std_msgs::msg::Float64();
+            msg_rad.data = unwrap_encoder(pos_l, prev_pos_l_raw_, accumulated_pos_l_rad_, first_pos_l_);
+            pub_pos_l_rad_->publish(msg_rad);
           }
           if (j.contains("battery_voltage_mV")) {
             auto msg = std_msgs::msg::Float32();
@@ -360,6 +378,31 @@ private:
         RCLCPP_ERROR(this->get_logger(), "CBOR data (first 16 bytes): %s", hex_str.c_str());
       }
     }
+  }
+
+  double unwrap_encoder(int16_t current, int16_t& prev, double& accumulated, bool& first)
+  {
+    const double SCALE = 2.0 * M_PI / 32767.0;
+    if (first) {
+      prev = current;
+      accumulated = 0.0;
+      first = false;
+      return 0.0;
+    }
+
+    int32_t delta = static_cast<int32_t>(current) - static_cast<int32_t>(prev);
+    const int32_t HALF_RANGE = 32767 / 2; // 16383
+    const int32_t FULL_RANGE = 32767;
+
+    if (delta > HALF_RANGE) {
+      delta -= FULL_RANGE;
+    } else if (delta < -HALF_RANGE) {
+      delta += FULL_RANGE;
+    }
+
+    accumulated += static_cast<double>(delta) * SCALE;
+    prev = current;
+    return accumulated;
   }
 
   std::vector<uint8_t> cobs_encode(const std::vector<uint8_t>& input)
@@ -500,6 +543,14 @@ private:
   bool invert_motor_l_;
   bool invert_motor_r_;
 
+  // Encoder unwrapping for continuous angle
+  int16_t prev_pos_l_raw_;
+  int16_t prev_pos_r_raw_;
+  double accumulated_pos_l_rad_;
+  double accumulated_pos_r_rad_;
+  bool first_pos_l_;
+  bool first_pos_r_;
+
   rclcpp::Time last_cmd_vel_time_;
 
   // Service
@@ -512,6 +563,8 @@ private:
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr pub_pos_l_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr pub_voltage_;
   rclcpp::Publisher<std_msgs::msg::UInt32>::SharedPtr pub_timestamp_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_pos_l_rad_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_pos_r_rad_;
 
   // Subscriber
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr sub_cmd_vel_;
