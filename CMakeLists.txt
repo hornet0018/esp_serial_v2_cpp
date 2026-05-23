@@ -12,6 +12,9 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(serial REQUIRED)
 find_package(std_srvs REQUIRED)
@@ -28,8 +31,19 @@ ament_target_dependencies(esp_serial_ros2
   diagnostic_updater
 )
 
+add_executable(odometry_publisher src/odometry_publisher.cpp)
+ament_target_dependencies(odometry_publisher
+  rclcpp
+  std_msgs
+  geometry_msgs
+  nav_msgs
+  tf2
+  tf2_ros
+)
+
 install(TARGETS
   esp_serial_ros2
+  odometry_publisher
   DESTINATION lib/${PROJECT_NAME}
 )
 
