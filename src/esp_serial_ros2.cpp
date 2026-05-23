@@ -326,7 +326,7 @@ private:
             pub_pos_l_->publish(msg);
 
             auto msg_rad = std_msgs::msg::Float64();
-            msg_rad.data = unwrap_encoder(-pos_l, prev_pos_l_raw_, accumulated_pos_l_rad_, first_pos_l_);
+            msg_rad.data = unwrap_encoder(pos_l, prev_pos_l_raw_, accumulated_pos_l_rad_, first_pos_l_);
             pub_pos_l_rad_->publish(msg_rad);
           }
           if (j.contains("battery_voltage_mV")) {
