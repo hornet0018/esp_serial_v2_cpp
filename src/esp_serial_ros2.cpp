@@ -34,6 +34,9 @@ public:
     this->declare_parameter("serial_port", "/dev/esp32_serial");
     this->declare_parameter("baud_rate", 115200);
     this->declare_parameter("expected_hz", 100.0);
+    // wheel_radius and wheel_separation are loaded from
+    // esp_serial_v2_cpp/config/odometry_calibration.yaml via the launch file.
+    // Rebuild is NOT required when updating calibration values.
     this->declare_parameter("wheel_radius", 0.0473);
     this->declare_parameter("wheel_separation", 0.1796);
     this->declare_parameter("max_rpm", 115);

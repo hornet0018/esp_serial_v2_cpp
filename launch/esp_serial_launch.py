@@ -3,8 +3,15 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
+from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
+    # Load odometry calibration parameters from YAML
+    odom_config = os.path.join(
+        get_package_share_directory('esp_serial_v2_cpp'),
+        'config', 'odometry_calibration.yaml'
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument(
             'serial_port',
@@ -15,16 +22,6 @@ def generate_launch_description():
             'baud_rate',
             default_value='115200',
             description='Baud rate'
-        ),
-        DeclareLaunchArgument(
-            'wheel_radius',
-            default_value='0.0473',
-            description='Wheel radius in meters'
-        ),
-        DeclareLaunchArgument(
-            'wheel_separation',
-            default_value='0.1796',
-            description='Wheel separation (tread) in meters'
         ),
         DeclareLaunchArgument(
             'max_rpm',
@@ -51,17 +48,15 @@ def generate_launch_description():
             default_value='true',
             description='Invert right motor rotation'
         ),
-        
+
         Node(
             package='esp_serial_v2_cpp',
             executable='esp_serial_ros2',
             name='esp_serial_ros2',
             output='screen',
-            parameters=[{
+            parameters=[odom_config, {
                 'serial_port': LaunchConfiguration('serial_port'),
                 'baud_rate': LaunchConfiguration('baud_rate'),
-                'wheel_radius': LaunchConfiguration('wheel_radius'),
-                'wheel_separation': LaunchConfiguration('wheel_separation'),
                 'max_rpm': LaunchConfiguration('max_rpm'),
                 'update_rate': LaunchConfiguration('update_rate'),
                 'cmd_vel_timeout': LaunchConfiguration('cmd_vel_timeout'),

@@ -12,6 +12,8 @@ public:
   OdometryPublisher()
   : Node("odometry_publisher")
   {
+    // These parameters are loaded from esp_serial_v2_cpp/config/odometry_calibration.yaml
+    // via the launch file. Rebuild is NOT required when updating calibration values.
     this->declare_parameter("wheel_radius", 0.0473);
     this->declare_parameter("wheel_separation", 0.1796);
     this->declare_parameter("publish_rate", 50.0);
@@ -55,26 +57,24 @@ public:
 private:
   void pos_l_callback(const std_msgs::msg::Float64::SharedPtr msg)
   {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (first_left_) {
       left_pos_prev_ = msg->data;
       first_left_ = false;
       return;
     }
-
-    std::lock_guard<std::mutex> lock(mutex_);
     left_pos_ = msg->data;
     left_received_ = true;
   }
 
   void pos_r_callback(const std_msgs::msg::Float64::SharedPtr msg)
   {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (first_right_) {
       right_pos_prev_ = msg->data;
       first_right_ = false;
       return;
     }
-
-    std::lock_guard<std::mutex> lock(mutex_);
     right_pos_ = msg->data;
     right_received_ = true;
   }
@@ -97,18 +97,28 @@ private:
     left_pos_prev_ = left_pos_;
     right_pos_prev_ = right_pos_;
 
-    double left_dist = delta_left * wheel_radius_;
-    double right_dist = delta_right * wheel_radius_;
+    // Threshold: ignore encoder noise below ~2.5 counts (~0.0005 rad / 0.029°)
+    const double MIN_DELTA_POS = 0.0005;
+    bool motion_detected = (std::abs(delta_left) >= MIN_DELTA_POS) ||
+                           (std::abs(delta_right) >= MIN_DELTA_POS);
 
-    double dist = (left_dist + right_dist) / 2.0;
-    double delta_theta = (right_dist - left_dist) / wheel_separation_;
+    double dist = 0.0;
+    double delta_theta = 0.0;
 
-    double delta_x = dist * std::cos(theta_);
-    double delta_y = dist * std::sin(theta_);
+    if (motion_detected) {
+      double left_dist = delta_left * wheel_radius_;
+      double right_dist = delta_right * wheel_radius_;
 
-    x_ += delta_x;
-    y_ += delta_y;
-    theta_ += delta_theta;
+      dist = (left_dist + right_dist) / 2.0;
+      delta_theta = (right_dist - left_dist) / wheel_separation_;
+
+      double delta_x = dist * std::cos(theta_);
+      double delta_y = dist * std::sin(theta_);
+
+      x_ += delta_x;
+      y_ += delta_y;
+      theta_ += delta_theta;
+    }
 
     nav_msgs::msg::Odometry odom;
     odom.header.stamp = current_time;

@@ -1,0 +1,16 @@
+# Odometry Calibration Parameters
+# Update these values after performing calibration.
+# No rebuild is required; just restart the launch files.
+#
+# Calibration history:
+# - 2026-05-24: Initial values (wheel_radius=0.0473, wheel_separation=0.1796)
+
+esp_serial_ros2:
+  ros__parameters:
+    wheel_radius: 0.0473
+    wheel_separation: 0.205257
+
+odometry_publisher:
+  ros__parameters:
+    wheel_radius: 0.0473
+    wheel_separation: 0.205257
